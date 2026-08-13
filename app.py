@@ -46,8 +46,7 @@ if "current_chat" not in st.session_state:
 
 # 4. Sidebar Infrastructure (Navigation & Settings Hub)
 with st.sidebar:
-    st.markdown('<div class="sidebar-header">✨ AI Studio</div>', unsafe_html=True)
-    
+    st.markdown('<div class="sidebar-header">...</div>', unsafe_allow_html=True)
     # Feature A: Multiple Chat Windows Management
     st.subheader("💬 Active Conversations")
     new_chat_name = st.text_input("New Conversation Name:", placeholder="Project Alpha...")
