@@ -76,9 +76,8 @@ st.markdown("""
 
 # 3. Environment Integrity Check
 required_keys = ["GROQ_API_KEY", "PINECONE_API_KEY", "TAVILY_API_KEY"]
-missing_keys = [k for k in required_keys if not os.getenv(k)]
-if missing_keys:
-    st.error(f"🚨 CONFIG ERROR: Missing system environment keys: {', '.join(missing_keys)}")
+if not all(os.getenv(k) for k in required_keys):
+    st.error("🚨 CONFIG ERROR: Missing system environment keys.")
     st.stop()
 
 # 4. State Initializers
@@ -87,7 +86,7 @@ if "chats" not in st.session_state:
 if "current_chat" not in st.session_state:
     st.session_state.current_chat = "SYSTEM_MAIN_01"
 
-# 5. Core Engine Assembly (No external embedding packages)
+# 5. Core Engine Assembly
 @st.cache_resource
 def load_llm():
     return ChatGroq(model="openai/gpt-oss-120b", temperature=0.3, groq_api_key=os.getenv("GROQ_API_KEY"))
@@ -106,7 +105,7 @@ try:
     pc_client, index = load_vector_db()
     search_tool = load_search()
 except Exception as e:
-    st.error(f"❌ CRITICAL CORE FAULT: Connection block rejected - {str(e)}")
+    st.error(f"❌ CRITICAL FAULT: {str(e)}")
     st.stop()
 
 # 6. Sidebar Control Panel Layout
@@ -132,23 +131,22 @@ with st.sidebar:
     if st.button("🧬 SYNC WITH INFINITE MEMORY") and uploaded_text:
         with st.spinner("CONVERTING ARCHIVES IN THE CLOUD..."):
             try:
-                # Utilizes Pinecone's hosted inference engine models directly
                 embedding_response = pc_client.inference.embed(
                     model="multilingual-e5-large",
                     inputs=[uploaded_text],
                     parameters={"input_type": "passage"}
                 )
-                vector_embedding = embedding_response[0]["values"]
+                vector_embedding = embedding_response["values"]
                 vector_count = index.describe_index_stats()['total_vector_count']
-                
                 index.upsert(vectors=[{"id": f"doc_{vector_count}", "values": vector_embedding, "metadata": {"text": uploaded_text}}])
                 st.success("SUCCESS // MATRIX RANGE LOADED INTO MEMORY.")
             except Exception as e:
-                st.error(f"UPLOAD INTERCEPT FAULT: {str(e)}")
+                st.error(f"UPLOAD FAULT: {str(e)}")
 
 # --- MAIN SCREEN RUNTIME ---
 st.markdown(f"<h1>⚡ ACTIVE_STREAM // {st.session_state.current_chat}</h1>", unsafe_allow_html=True)
 
+# Loop and render everything currently saved in active log stream
 for msg in st.session_state.chats[st.session_state.current_chat]:
     if msg["role"] == "user":
         st.markdown(f'<div class="chat-container user-block"><b>[USER_PROMPT] >></b><br>{msg["content"]}</div>', unsafe_allow_html=True)
@@ -158,22 +156,27 @@ for msg in st.session_state.chats[st.session_state.current_chat]:
 def submit_prompt():
     user_query = st.session_state.input_field_key.strip()
     if user_query:
+        # Formulate active back-and-forth block string data history
+        history_str = ""
+        for msg in st.session_state.chats[st.session_state.current_chat]:
+            role_label = "User" if msg["role"] == "user" else "AI Assistant"
+            history_str += f"{role_label}: {msg['content']}\n"
+        
+        # Append User Entry to Session Log UI immediately
         st.session_state.chats[st.session_state.current_chat].append({"role": "user", "content": user_query})
         
         with st.spinner("READING ARCHIVE SPACE MATRIX VAULTS..."):
             try:
-                # Converts question via Pinecone server endpoints
                 query_response = pc_client.inference.embed(
                     model="multilingual-e5-large",
                     inputs=[user_query],
                     parameters={"input_type": "query"}
                 )
-                query_vector = query_response[0]["values"]
-                
+                query_vector = query_response["values"]
                 memory_results = index.query(vector=query_vector, top_k=3, include_metadata=True)
                 memory_context = "\n".join([match['metadata']['text'] for match in memory_results['matches'] if 'metadata' in match and 'text' in match['metadata']])
-            except Exception as e:
-                memory_context = "No contextual data matched in archive lookup."
+            except:
+                memory_context = "No memory context mapped."
                 
             try:
                 search_results = search_tool.invoke({"query": user_query})
@@ -181,9 +184,13 @@ def submit_prompt():
             except:
                 web_context = "Live search channels unrecoverable."
 
+            # We pass the conversation timeline string straight down to system instructions
             system_prompt = f"""
             You are a highly premium AI core agent operating inside a secure cyber terminal interface.
-            Synthesize the context streams perfectly to solve the User Objective question.
+            Synthesize the context streams and past thread logs perfectly to solve the User Objective question.
+            
+            [RECENT CONVERSATION HISTORY LOGS]:
+            {history_str}
             
             [INFINITE CLOUD RETRIEVAL VECTOR SPACE]:
             {memory_context}
@@ -191,7 +198,7 @@ def submit_prompt():
             [LIVE WEB NETWORK TARGET DATASTREAM]:
             {web_context}
             
-            User Objective Question: {user_query}
+            Current User Question: {user_query}
             """
             
             try:
