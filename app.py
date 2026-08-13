@@ -124,7 +124,7 @@ def get_pinecone_client():
 def get_llm():
     llm = ChatGroq(
         groq_api_key=GROQ_API_KEY,
-        model_name="gpt-oss-120b",
+        model_name="openai/gpt-oss-120b",
         temperature=0.6
     )
     return llm
