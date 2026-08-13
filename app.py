@@ -166,7 +166,7 @@ try:
     
     for record in sorted_matches:
         chat_history_logs.append({"role": record['metadata']['role'], "content": record['metadata']['text']})
-except Exception as e:
+except Exception:
     pass
 
 # Render historical messages
@@ -193,7 +193,7 @@ def submit_prompt():
                 "values": user_vec_resp["values"], 
                 "metadata": {"text": user_query, "role": "user", "type": "chat", "channel": st.session_state.current_chat, "timestamp": time.time()}
             }])
-        except:
+        except Exception:
             pass
         
         with st.spinner("ORCHESTRATING CLOUD CONTEXT LOOPS..."):
@@ -202,13 +202,13 @@ def submit_prompt():
                 query_vector = query_response["values"]
                 memory_results = index.query(vector=query_vector, top_k=5, include_metadata=True)
                 memory_context = "\n".join([match['metadata']['text'] for match in memory_results['matches'] if 'metadata' in match and match['metadata'].get('type') == 'knowledge'])
-            except:
+            except Exception:
                 memory_context = "No structural deep memories found."
                 
             try:
                 search_results = search_tool.invoke({"query": user_query})
                 web_context = str(search_results)
-            except:
+            except Exception:
                 web_context = "Live digital systems network arrays unverified."
 
             system_prompt = f"""
@@ -236,4 +236,3 @@ def submit_prompt():
             # Commit AI output to Pinecone permanently [1.2]
             try:
                 ai_vec_resp = pc_client.inference.embed(model="multilingual-e5-large", inputs=[ai_output], parameters={"input_type": "passage"})
-                ai_uid = f"chat_ai_{int(time.time())}_{int(time.time()*1000)%1000}"
