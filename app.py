@@ -16,8 +16,8 @@ if not os.getenv("GROQ_API_KEY") or not os.getenv("PINECONE_API_KEY") or not os.
 
 # 3. Load the Absolute Best Open-Source Brain (Llama 3.3 70B via Groq)
 llm = ChatGroq(
-    model="llama-3.3-70b-versatile",
-    temperature=0.3,
+    model="openai/gpt-oss-120b",
+    temperature=0.5,
     groq_api_key=os.getenv("GROQ_API_KEY")
 )
 
