@@ -4,85 +4,151 @@ from langchain_groq import ChatGroq
 from langchain_community.tools.tavily_search import TavilySearchResults
 from pinecone import Pinecone
 
-# 1. Page Config (Sets clean, wide, modern layout)
-st.set_page_config(page_title="AI Studio", page_icon="✨", layout="wide", initial_sidebar_state="expanded")
+# 1. Page Configuration
+st.set_page_config(
+    page_title="NEON CORE // AI", 
+    page_icon="⚡", 
+    layout="wide", 
+    initial_sidebar_state="expanded"
+)
 
-# --- Custom Google AI Style CSS ---
+# 2. Re-designed Cyberpunk Interface Stylesheet (Black, Orange, Red, Neon Green)
 st.markdown("""
     <style>
-        /* Modern font and subtle background styling */
-        .stApp { background-color: #0f1115; color: #e3e2e6; }
-        /* Clean Chat Bubble Styles */
-        .user-bubble {
-            background-color: #2b2d31; padding: 14px 18px; 
-            border-radius: 20px 20px 4px 20px; margin: 10px 0;
-            display: inline-block; max-width: 80%; float: right; clear: both;
+        /* Base Canvas - Deep Cyberpunk Void Black */
+        .stApp { 
+            background-color: #000000 !important; 
+            color: #00FF66 !important; 
+            font-family: 'Courier New', monospace;
         }
-        .ai-bubble {
-            background-color: #1e1f24; padding: 14px 18px; 
-            border-radius: 20px 20px 20px 4px; margin: 10px 0;
-            display: inline-block; max-width: 85%; float: left; clear: both;
-            border-left: 3px solid #4285f4;
+        
+        /* Sidebar Restyling */
+        section[data-testid="stSidebar"] { 
+            background-color: #050505 !important; 
+            border-right: 2px solid #FF5500 !important; 
         }
-        /* Sidebar Styling */
-        section[data-testid="stSidebar"] { background-color: #13151a !important; border-right: 1px solid #23272e; }
-        .sidebar-header { font-size: 20px; font-weight: bold; color: #4285f4; margin-bottom: 20px; }
-        /* Action buttons styling */
-        .stButton>button { border-radius: 20px; background-color: #4285f4; color: white; border: none; }
-        .stButton>button:hover { background-color: #3572cd; color: white; }
+        
+        /* Headers */
+        h1, h2, h3, .sidebar-header { 
+            color: #FF1100 !important; 
+            text-transform: uppercase; 
+            letter-spacing: 2px;
+            font-weight: 900;
+            text-shadow: 0px 0px 8px #FF1100;
+        }
+        
+        /* Custom Message Container Flow Layout */
+        .chat-container {
+            margin: 15px 0px;
+            padding: 15px;
+            border-radius: 4px;
+            width: 100%;
+            clear: both;
+        }
+        
+        /* User Prompt Layout - Vibrant Cyberpunk Orange Accent */
+        .user-block {
+            background-color: #0a0400;
+            border: 1px solid #FF5500;
+            border-left: 5px solid #FF5500;
+            color: #FFBB00;
+            box-shadow: 0px 0px 5px #FF5500;
+        }
+        
+        /* Machine Output Layout - Electric Neon Green Accent */
+        .ai-block {
+            background-color: #000a03;
+            border: 1px solid #00FF66;
+            border-left: 5px solid #00FF66;
+            color: #33FF77;
+            box-shadow: 0px 0px 5px #00FF66;
+        }
+        
+        /* Universal Form Fields (Inputs, Sliders, Dropdowns) */
+        .stTextInput>div>div>input, .stTextArea>div>div>textarea, select {
+            background-color: #080808 !important;
+            color: #00FF66 !important;
+            border: 1px solid #FF5500 !important;
+            border-radius: 0px !important;
+        }
+        .stTextInput>div>div>input:focus, .stTextArea>div>div>textarea:focus {
+            border: 1px solid #00FF66 !important;
+            box-shadow: 0px 0px 10px #00FF66 !important;
+        }
+        
+        /* High Contrast UI Action Elements */
+        .stButton>button { 
+            border-radius: 0px !important; 
+            background-color: #FF5500 !important; 
+            color: #000000 !important; 
+            font-weight: bold !important;
+            border: 1px solid #FF1100 !important;
+            width: 100%;
+        }
+        .stButton>button:hover { 
+            background-color: #00FF66 !important; 
+            color: #000000 !important;
+            border: 1px solid #00FF66 !important;
+            box-shadow: 0px 0px 12px #00FF66;
+        }
     </style>
 """, unsafe_allow_html=True)
 
-# 2. Check for System API Credentials
+# 3. Secure Environmental Integrity Verification Loop
 if not os.getenv("GROQ_API_KEY") or not os.getenv("PINECONE_API_KEY") or not os.getenv("TAVILY_API_KEY"):
-    st.error("🔑 API Keys Missing! Add them to your Streamlit App Advanced Secrets.")
+    st.error("🚨 CRITICAL FAULT: ENV KEYS NOT DETECTED IN STORAGE RUNTIME HOST.")
     st.stop()
 
-# 3. Handle Session State Memory for Multiple Chat Windows
+# 4. Multi-Instance Workspace Cache Infrastructure
 if "chats" not in st.session_state:
-    st.session_state.chats = {"Chat Window 1": []}
+    st.session_state.chats = {"SYSTEM_MAIN_01": []}
 if "current_chat" not in st.session_state:
-    st.session_state.current_chat = "Chat Window 1"
+    st.session_state.current_chat = "SYSTEM_MAIN_01"
 
-# 4. Sidebar Infrastructure (Navigation & Settings Hub)
+# 5. Core Control Panel Sidebar Build (Left Anchor)
 with st.sidebar:
-    st.markdown('<div class="sidebar-header">...</div>', unsafe_allow_html=True)
-    # Feature A: Multiple Chat Windows Management
-    st.subheader("💬 Active Conversations")
-    new_chat_name = st.text_input("New Conversation Name:", placeholder="Project Alpha...")
-    if st.button("➕ Create New Chat") and new_chat_name:
-        if new_chat_name not in st.session_state.chats:
-            st.session_state.chats[new_chat_name] = []
-            st.session_state.current_chat = new_chat_name
+    st.markdown('<div class="sidebar-header">⚡ NEON CORE // ENGINE</div>', unsafe_allow_html=True)
+    
+    st.markdown("<h3 style='color:#FF5500;'>[X] MATRIX_CHANNELS</h3>", unsafe_allow_html=True)
+    new_chat_name = st.text_input("INITIALIZE NEW STREAM:", placeholder="SECURE_LOG_X...")
+    if st.button("⚡ EXECUTE CREATION") and new_chat_name:
+        clean_name = new_chat_name.upper().replace(" ", "_")
+        if clean_name not in st.session_state.chats:
+            st.session_state.chats[clean_name] = []
+            st.session_state.current_chat = clean_name
             st.rerun()
 
-    # Chat Selector Dropdown List
+    # Active Stream Context Router Selection
     chat_list = list(st.session_state.chats.keys())
-    st.session_state.current_chat = st.selectbox("Switch Active Chat:", chat_list, index=chat_list.index(st.session_state.current_chat))
+    st.session_state.current_chat = st.selectbox(
+        "ROUTING CHANNEL TARGET:", 
+        chat_list, 
+        index=chat_list.index(st.session_state.current_chat)
+    )
     
-    st.markdown("---")
+    st.markdown("<hr style='border:1px solid #FF5500;'>", unsafe_allow_html=True)
     
-    # Feature B: Creative Engine Parameters slider controls
-    st.subheader("⚙️ Model Tuning")
-    ai_creativity = st.slider("Creativity Level (Temperature):", min_value=0.0, max_value=1.0, value=0.3, step=0.1)
+    # Model Tuning Panel
+    st.markdown("<h3 style='color:#FF5500;'>[Y] BRAIN_TUNING</h3>", unsafe_allow_html=True)
+    ai_creativity = st.slider("VARIANCE LEVEL (TEMP):", min_value=0.0, max_value=1.0, value=0.3, step=0.1)
     
-    st.markdown("---")
+    st.markdown("<hr style='border:1px solid #FF5500;'>", unsafe_allow_html=True)
     
-    # Feature C: Embedded Infinite Context Manager (Knowledge Base Sync)
-    st.subheader("📁 Upload Knowledge Base")
-    uploaded_text = st.text_area("Paste reference data, notes, or documentation text here:", height=150)
-    if st.button("💾 Sync to Infinite Cloud Memory") and uploaded_text:
-        with st.spinner("Indexing into Pinecone..."):
+    # Memory Sync Node Zone
+    st.markdown("<h3 style='color:#FF5500;'>[Z] MEMORY_LOADER</h3>", unsafe_allow_html=True)
+    uploaded_text = st.text_area("INJECT RAW TEXT DOCUMENT ARRAYS:", height=120)
+    if st.button("🧬 SYNC WITH INFINITE MEMORY VAULT") and uploaded_text:
+        with st.spinner("COMMITTING VECTOR BLOCKS TO PINECONE CLOUD..."):
             try:
                 pc = Pinecone(api_key=os.getenv("PINECONE_API_KEY"))
                 index = pc.Index("infinite-context")
                 vector_count = index.describe_index_stats()['total_vector_count']
                 index.upsert(vectors=[{"id": f"doc_{vector_count}", "values": [0.0]*1024, "metadata": {"text": uploaded_text}}])
-                st.success("Successfully learned! This context is preserved forever.")
+                st.success("SUCCESS // TARGET VECTOR RANGE SYNCHRONIZED FOREVER.")
             except Exception as e:
-                st.error(f"Pinecone upload failed: {str(e)}")
+                st.error(f"FAIL // PIPELINE VECTOR DROP REJECTED: {str(e)}")
 
-# 5. Core AI Engines Core Init
+# 6. Global Variable Engine Mapping
 @st.cache_resource
 def init_engines():
     llm_instance = ChatGroq(model="openai/gpt-oss-120b", temperature=ai_creativity, groq_api_key=os.getenv("GROQ_API_KEY"))
@@ -94,67 +160,65 @@ def init_engines():
 try:
     llm, index, search_tool = init_engines()
 except Exception as e:
-    st.error("Failed to connect to backend engine models. Double-check secret token variables.")
+    st.error("CRITICAL EXCEPTION: BACKEND CORE HARDWARE AUTHENTICATION REJECTED.")
     st.stop()
 
-# --- MAIN CHAT INTERFACE ---
-st.markdown(f"### 🌐 Core Engine: `{st.session_state.current_chat}`")
+# --- CHAT INTERFACE DISPLAY TIMELINE ---
+st.markdown(f"<h1>⚡ ACTIVE_STREAM // {st.session_state.current_chat}</h1>", unsafe_allow_html=True)
 
-# Display Past Messages for selected window
+# Map UI State Tracking Sessions
 active_messages = st.session_state.chats[st.session_state.current_chat]
 for msg in active_messages:
     if msg["role"] == "user":
-        st.markdown(f'<div class="user-bubble"><b>You:</b><br>{msg["content"]}</div>', unsafe_html=True)
+        st.markdown(f'<div class="chat-container user-block"><b>[USER_PROMPT] >></b><br>{msg["content"]}</div>', unsafe_allow_html=True)
     else:
-        st.markdown(f'<div class="ai-bubble"><b>AI Studio:</b><br>{msg["content"]}</div>', unsafe_html=True)
+        st.markdown(f'<div class="chat-container ai-block"><b>[CORE_OUTPUT] >></b><br>{msg["content"]}</div>', unsafe_allow_html=True)
 
-# Spacing container clear floating elements
-st.markdown('<div style="clear:both; margin-bottom:100px;"></div>', unsafe_html=True)
+# Layout Separator Spacing Fix
+st.markdown('<div style="clear:both; margin-bottom:50px;"></div>', unsafe_allow_html=True)
 
-# Google AI Floating Bottom Input Form Layout
-with st.container():
-    user_query = st.text_input("Message AI Studio...", placeholder="Ask a question, analyze vector archives, or search the web...", key="chat_input_field")
+# Input Command line deck bar
+user_query = st.text_input("EXECUTE COMMAND PROMPT...", placeholder="Input matrix parameters or run semantic archive lookups...", key="terminal_input")
+
+if user_query:
+    st.session_state.chats[st.session_state.current_chat].append({"role": "user", "content": user_query})
     
-    if user_query:
-        # Append User Entry to Session Log UI
-        st.session_state.chats[st.session_state.current_chat].append({"role": "user", "content": user_query})
+    with st.spinner("PULLING MEMORY VAULTS AND SCANNING EXTERNAL WEB STRANDS..."):
+        # Step A: Infinite Context DB Scraping
+        try:
+            memory_results = index.query(vector=[0.0]*1024, top_k=3, include_metadata=True)
+            memory_context = "\n".join([match['metadata']['text'] for match in memory_results['matches'] if 'metadata' in match and 'text' in match['metadata']])
+        except:
+            memory_context = "Empty database context records."
         
-        with st.spinner("Processing deep memory contextual loops..."):
-            # Step A: Check Infinite Vector Space Archive Layouts
-            try:
-                memory_results = index.query(vector=[0.0]*1024, top_k=3, include_metadata=True)
-                memory_context = "\n".join([match['metadata']['text'] for match in memory_results['matches'] if 'metadata' in match and 'text' in match['metadata']])
-            except:
-                memory_context = "No previous context match logged."
-            
-            # Step B: Live Network Scan Loop Tracking
-            try:
-                search_results = search_tool.invoke({"query": user_query})
-                web_context = str(search_results)
-            except:
-                web_context = "No structural web documents recovered."
+        # Step B: Live Search Engine Deployment
+        try:
+            search_results = search_tool.invoke({"query": user_query})
+            web_context = str(search_results)
+        except:
+            web_context = "External live networks unrecoverable."
 
-            # Step C: Heavy Orchestrated Model System Instruction Setup
-            system_prompt = f"""
-            You are a premium AI agent. Analyze user queries using the context sets.
-            
-            [Infinite Cloud Storage Context]:
-            {memory_context}
-            
-            [Real-time Web Search Data]:
-            {web_context}
-            
-            User Objective Question: {user_query}
-            """
-            
-            # Step D: Pull output from custom GPT-OSS architecture tier
-            try:
-                response = llm.invoke(system_prompt)
-                ai_output = response.content
-            except Exception as e:
-                ai_output = f"Model Processing Error: {str(e)}"
-            
-            # Append Response to current chat session record
-            st.session_state.chats[st.session_state.current_chat].append({"role": "ai", "content": ai_output})
-            st.rerun()
+        # Step C: Heavy Orchestrated Model System Instruction Setup
+        system_prompt = f"""
+        You are a highly premium AI core agent operating inside a secure cyber terminal terminal interface. 
+        Synthesize the dataset context streams perfectly to solve the User Objective question.
+        
+        [INFINITE CLOUD RETRIEVAL VECTOR SPACE]:
+        {memory_context}
+        
+        [LIVE WEB NETWORK TARGET DATASTREAM]:
+        {web_context}
+        
+        User Objective Question: {user_query}
+        """
+        
+        # Step D: Pull output from custom GPT-OSS 120B model
+        try:
+            response = llm.invoke(system_prompt)
+            ai_output = response.content
+        except Exception as e:
+            ai_output = f"HARDWARE TERMINAL EXECUTION ERROR: {str(e)}"
+        
+        st.session_state.chats[st.session_state.current_chat].append({"role": "ai", "content": ai_output})
+        st.rerun()
 
