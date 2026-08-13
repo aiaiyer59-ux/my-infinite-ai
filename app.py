@@ -31,7 +31,7 @@ st.markdown("""
         .stButton>button { border-radius: 20px; background-color: #4285f4; color: white; border: none; }
         .stButton>button:hover { background-color: #3572cd; color: white; }
     </style>
-""", unsafe_html=True)
+""", unsafe_allow_html=True)
 
 # 2. Check for System API Credentials
 if not os.getenv("GROQ_API_KEY") or not os.getenv("PINECONE_API_KEY") or not os.getenv("TAVILY_API_KEY"):
