@@ -1,6 +1,5 @@
 streamlit
 langchain-groq
 langchain-community
+pinecone
 tavily-python
-pinecone-client
-
