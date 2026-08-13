@@ -2,6 +2,7 @@ import os
 import streamlit as st
 from langchain_groq import ChatGroq
 from langchain_community.tools.tavily_search import TavilySearchResults
+from langchain_community.embeddings import HuggingFaceEmbeddings
 from pinecone import Pinecone
 
 # 1. Page Configuration
@@ -85,7 +86,18 @@ if "chats" not in st.session_state:
 if "current_chat" not in st.session_state:
     st.session_state.current_chat = "SYSTEM_MAIN_01"
 
-# 5. Control Panel Sidebar Build
+# 5. Engine Instantiations & Caching (Loads the 1024-Dimension Translator)
+@st.cache_resource
+def init_engines(creativity_level):
+    llm_instance = ChatGroq(model="openai/gpt-oss-120b", temperature=creativity_level, groq_api_key=os.getenv("GROQ_API_KEY"))
+    pc_instance = Pinecone(api_key=os.getenv("PINECONE_API_KEY"))
+    index_instance = pc_instance.Index("infinite-context")
+    search_instance = TavilySearchResults(tavily_api_key=os.getenv("TAVILY_API_KEY"), max_results=3)
+    # This downloads a free open-source mathematical encoder to translate your text perfectly
+    embed_instance = HuggingFaceEmbeddings(model_name="BAAI/bge-large-en-v1.5")
+    return llm_instance, index_instance, search_instance, embed_instance
+
+# 6. Control Panel Sidebar Build
 with st.sidebar:
     st.markdown('<div class="sidebar-header">⚡ NEON CORE // ENGINE</div>', unsafe_allow_html=True)
     
@@ -109,34 +121,26 @@ with st.sidebar:
     st.markdown("<h3 style='color:#FF5500;'>[Y] BRAIN_TUNING</h3>", unsafe_allow_html=True)
     ai_creativity = st.slider("VARIANCE LEVEL (TEMP):", min_value=0.0, max_value=1.0, value=0.3, step=0.1)
     
+    # Initialize components
+    try:
+        llm, index, search_tool, embedding_model = init_engines(ai_creativity)
+    except Exception as e:
+        st.error("CRITICAL EXCEPTION: ENGINE CONNECT FAIL.")
+        st.stop()
+        
     st.markdown("<hr style='border:1px solid #FF5500;'>", unsafe_allow_html=True)
     st.markdown("<h3 style='color:#FF5500;'>[Z] MEMORY_LOADER</h3>", unsafe_allow_html=True)
     uploaded_text = st.text_area("INJECT RAW TEXT DOCUMENT ARRAYS:", height=120)
     if st.button("🧬 SYNC WITH INFINITE MEMORY VAULT") and uploaded_text:
-        with st.spinner("COMMITTING VECTOR BLOCKS..."):
+        with st.spinner("CONVERTING TEXT TO VECTOR STRANDS..."):
             try:
-                pc = Pinecone(api_key=os.getenv("PINECONE_API_KEY"))
-                index = pc.Index("infinite-context")
+                # Converts your text into an exact 1024 dimensional math matrix array
+                vector_embedding = embedding_model.embed_query(uploaded_text)
                 vector_count = index.describe_index_stats()['total_vector_count']
-                index.upsert(vectors=[{"id": f"doc_{vector_count}", "values": [0.0]*1024, "metadata": {"text": uploaded_text}}])
+                index.upsert(vectors=[{"id": f"doc_{vector_count}", "values": vector_embedding, "metadata": {"text": uploaded_text}}])
                 st.success("SUCCESS // TARGET VECTOR RANGE SYNCHRONIZED FOREVER.")
             except Exception as e:
                 st.error(f"FAIL: {str(e)}")
-
-# 6. Engine Instantiations
-@st.cache_resource
-def init_engines():
-    llm_instance = ChatGroq(model="openai/gpt-oss-120b", temperature=ai_creativity, groq_api_key=os.getenv("GROQ_API_KEY"))
-    pc_instance = Pinecone(api_key=os.getenv("PINECONE_API_KEY"))
-    index_instance = pc_instance.Index("infinite-context")
-    search_instance = TavilySearchResults(tavily_api_key=os.getenv("TAVILY_API_KEY"), max_results=3)
-    return llm_instance, index_instance, search_instance
-
-try:
-    llm, index, search_tool = init_engines()
-except Exception as e:
-    st.error("CRITICAL EXCEPTION: ENGINE CONNECT FAIL.")
-    st.stop()
 
 # --- MAIN UI WORKSPACE ---
 st.markdown(f"<h1>⚡ ACTIVE_STREAM // {st.session_state.current_chat}</h1>", unsafe_allow_html=True)
@@ -151,19 +155,21 @@ for msg in active_messages:
 
 st.markdown('<div style="clear:both; margin-bottom:20px;"></div>', unsafe_allow_html=True)
 
-# Callback function to handle processing safely and clear the text deck
+# Callback function to handle processing safely
 def submit_prompt():
     user_query = st.session_state.input_field_key.strip()
     if user_query:
-        # 1. Log query instantly
         st.session_state.chats[st.session_state.current_chat].append({"role": "user", "content": user_query})
         
-        # 2. Execute RAG & Web context generation
+        # Execute active context extraction
         try:
-            memory_results = index.query(vector=[0.0]*1024, top_k=3, include_metadata=True)
+            # 1. Translate user question to mathematical space
+            query_vector = embedding_model.embed_query(user_query)
+            # 2. Query Pinecone matching the calculated query coordinate
+            memory_results = index.query(vector=query_vector, top_k=3, include_metadata=True)
             memory_context = "\n".join([match['metadata']['text'] for match in memory_results['matches'] if 'metadata' in match and 'text' in match['metadata']])
-        except:
-            memory_context = "Empty archive records."
+        except Exception as e:
+            memory_context = "Empty archive records or extraction fault."
             
         try:
             search_results = search_tool.invoke({"query": user_query})
@@ -173,7 +179,8 @@ def submit_prompt():
 
         system_prompt = f"""
         You are a highly premium AI core agent operating inside a secure cyber terminal. 
-        Synthesize the dataset context streams perfectly to solve the User Objective question. Keep responses clear and punchy.
+        Synthesize the dataset context streams perfectly to solve the User Objective question.
+        If the answer is found in the [INFINITE CLOUD RETRIEVAL VECTOR SPACE], prioritize it over the web search.
         
         [INFINITE CLOUD RETRIEVAL VECTOR SPACE]:
         {memory_context}
@@ -184,7 +191,6 @@ def submit_prompt():
         User Objective Question: {user_query}
         """
         
-        # 3. Request inference stream from 120B model
         try:
             response = llm.invoke(system_prompt)
             ai_output = response.content
@@ -192,11 +198,9 @@ def submit_prompt():
             ai_output = f"HARDWARE TERMINAL EXECUTION ERROR: {str(e)}"
             
         st.session_state.chats[st.session_state.current_chat].append({"role": "ai", "content": ai_output})
-        
-        # 4. Clear form input storage manually
         st.session_state.input_field_key = ""
 
-# Wrap prompt deck input inside a secure non-repeating state form block
+# Form input container
 with st.form(key="command_prompt_form", clear_on_submit=True):
     st.text_input("EXECUTE COMMAND PROMPT...", key="input_field_key", placeholder="Input matrix parameters or run semantic archive lookups...")
     st.form_submit_button(label="TRANSMIT PROMPT", on_click=submit_prompt)
