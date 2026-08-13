@@ -84,7 +84,7 @@ if not all(os.getenv(k) for k in required_keys):
 # 4. Global Hardware Client Hookups
 @st.cache_resource
 def load_llm():
-    return ChatGroq(model="openai/gpt-oss-120b", temperature=0.3, groq_api_key=os.getenv("GROQ_API_KEY"))
+    return ChatGroq(model="llama-3.3-70b-specdec", temperature=0.3, groq_api_key=os.getenv("GROQ_API_KEY"))
 
 @st.cache_resource
 def load_vector_db():
@@ -178,61 +178,62 @@ for msg in chat_history_logs:
 
 def submit_prompt():
     user_query = st.session_state.input_field_key.strip()
-    if user_query:
-        history_str = ""
-        for msg in chat_history_logs:
-            role_label = "User" if msg["role"] == "user" else "AI Assistant"
-            history_str += f"{role_label}: {msg['content']}\n"
-            
-        # Commit user prompt to Pinecone permanently [1.2]
+    if not user_query:
+        return
+        
+    history_str = ""
+    for msg in chat_history_logs:
+        role_label = "User" if msg["role"] == "user" else "AI Assistant"
+        history_str += role_label + ": " + str(msg["content"]) + "\n"
+        
+    # Commit user prompt to Pinecone permanently [1.2]
+    try:
+        user_vec_resp = pc_client.inference.embed(model="multilingual-e5-large", inputs=[user_query], parameters={"input_type": "passage"})
+        user_uid = f"chat_user_{int(time.time())}_{int(time.time()*1000)%1000}"
+        index.upsert(vectors=[{
+            "id": user_uid, 
+            "values": user_vec_resp["values"], 
+            "metadata": {"text": user_query, "role": "user", "type": "chat", "channel": st.session_state.current_chat, "timestamp": time.time()}
+        }])
+    except Exception:
+        pass
+    
+    memory_context = "No structural deep memories found."
+    web_context = "Live digital systems network arrays unverified."
+    ai_output = ""
+    
+    with st.spinner("ORCHESTRATING CLOUD CONTEXT LOOPS..."):
         try:
-            user_vec_resp = pc_client.inference.embed(model="multilingual-e5-large", inputs=[user_query], parameters={"input_type": "passage"})
-            user_uid = f"chat_user_{int(time.time())}_{int(time.time()*1000)%1000}"
-            index.upsert(vectors=[{
-                "id": user_uid, 
-                "values": user_vec_resp["values"], 
-                "metadata": {"text": user_query, "role": "user", "type": "chat", "channel": st.session_state.current_chat, "timestamp": time.time()}
-            }])
+            query_response = pc_client.inference.embed(model="multilingual-e5-large", inputs=[user_query], parameters={"input_type": "query"})
+            query_vector = query_response["values"]
+            memory_results = index.query(vector=query_vector, top_k=5, include_metadata=True)
+            memory_context = "\n".join([match['metadata']['text'] for match in memory_results['matches'] if 'metadata' in match and match['metadata'].get('type') == 'knowledge'])
         except Exception:
             pass
-        
-        with st.spinner("ORCHESTRATING CLOUD CONTEXT LOOPS..."):
-            try:
-                query_response = pc_client.inference.embed(model="multilingual-e5-large", inputs=[user_query], parameters={"input_type": "query"})
-                query_vector = query_response["values"]
-                memory_results = index.query(vector=query_vector, top_k=5, include_metadata=True)
-                memory_context = "\n".join([match['metadata']['text'] for match in memory_results['matches'] if 'metadata' in match and match['metadata'].get('type') == 'knowledge'])
-            except Exception:
-                memory_context = "No structural deep memories found."
-                
-            try:
-                search_results = search_tool.invoke({"query": user_query})
-                web_context = str(search_results)
-            except Exception:
-                web_context = "Live digital systems network arrays unverified."
+            
+        try:
+            search_results = search_tool.invoke({"query": user_query})
+            web_context = str(search_results)
+        except Exception:
+            pass
 
-            system_prompt = f"""
-            You are a highly premium AI core agent operating inside a secure cyber terminal interface.
-            Synthesize the context streams and past conversation threads perfectly to solve the User Objective question.
+        # Clean string joining without using multi-line triple quoted syntax variables
+        system_prompt = (
+            "You are a highly premium AI core agent operating inside a secure cyber terminal interface.\n"
+            "Synthesize context streams and past threads perfectly to answer the objective question.\n\n"
+            "[RECENT CONVERSATION HISTORY LOGS]:\n" + history_str + "\n\n"
+            "[INFINITE CLOUD RETRIEVAL VECTOR SPACE]:\n" + memory_context + "\n\n"
+            "[LIVE WEB NETWORK TARGET DATASTREAM]:\n" + web_context + "\n\n"
+            "Current User Question: " + user_query
+        )
+        
+        try:
+            response = llm.invoke(system_prompt)
+            ai_output = response.content
+        except Exception as e:
+            ai_output = "HARDWARE TERMINAL DATA LOG EXCEPTION FAULT: " + str(e)
             
-            [RECENT CONVERSATION HISTORY LOGS]:
-            {history_str}
-            
-            [INFINITE CLOUD RETRIEVAL VECTOR SPACE]:
-            {memory_context}
-            
-            [LIVE WEB NETWORK TARGET DATASTREAM]:
-            {web_context}
-            
-            Current User Question: {user_query}
-            """
-            
-            try:
-                response = llm.invoke(system_prompt)
-                ai_output = response.content
-            except Exception as e:
-                ai_output = f"HARDWARE TERMINAL DATA LOG EXCEPTION FAULT: {str(e)}"
-                
-            # Commit AI output to Pinecone permanently [1.2]
-            try:
-                ai_vec_resp = pc_client.inference.embed(model="multilingual-e5-large", inputs=[ai_output], parameters={"input_type": "passage"})
+        # Commit AI output to Pinecone permanently [1.2]
+        try:
+            ai_vec_resp = pc_client.inference.embed(model="multilingual-e5-large", inputs=[ai_output], parameters={"input_type": "passage"})
+            ai_uid = f"chat_ai_{int(time.time())}_{int(time.time()*1000)%1000}"
